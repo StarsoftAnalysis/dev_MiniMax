@@ -136,7 +136,7 @@ int8_t evaluate_node(struct node *n, e_mark player) {
 	else if (check_win(n, opponent)) {
 		r = -16;
 	}
-
+	
 	return r;
 }
 
@@ -185,12 +185,8 @@ int8_t nega_max(struct node *n, int d, e_mark player) {
 	int8_t best = 0;
 	e_mark opponent = get_opposite(player);
 
-	// check if this is a terminal leaf
-	if ((score = evaluate_node(n, player)))  {
-		return score;
-	}
-	else if (board_full(n)) {
-		return 0;
+	if (board_full(n) || (score = evaluate_node(n, player))) {
+		return score ? score : count_wins(n, player);
 	}
 	
 	/* if (d==0) { */
