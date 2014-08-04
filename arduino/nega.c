@@ -1,9 +1,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <time.h>
 
 #include "nega.h"
+
+/**
+ * @brief printable symbols
+ */
+static const char symbols[LAST] = {
+	'-',
+	'O',
+	'X'
+};
+
+
 
 static uint8_t _best_moves[9] = {0x00};
 static uint8_t _best_move = 0x00;
@@ -190,47 +200,14 @@ void dump_grid(grid_t *g, uint8_t d) {
 
 
 void get_human_move(grid_t *g, e_mark m) {
-	char i = getchar();
-	if (i == 0x0a) {
-		i = getchar();
-	}
-
+	uint8_t i = 0x00;
+	while (!serial_getc(&i));
 	i = i - '0';
 	if (i >= 0 && i<= 9) {
 		g->g[i] = m;
 	}
 }
 
-#define PROFILE_MEM 0
-
-int main(int argc, char *argv[])
-{
-	grid_t grid;
-	memset(&grid, 0x00, sizeof(grid_t));
-	srand(time(NULL));
-
-#if PROFILE_MEM == 1
-	grid.g[0] = CROSS;
-	nega_max(&grid, 0, CIRCLE);
-	exit(0);
-#endif
-
-	dump_grid(&grid, 0);
-
-	while (1) {
-		get_human_move(&grid, CROSS);
-		dump_grid(&grid, 0);
-
-		printf("CPU\n");
-		nega_max(&grid, 0, CIRCLE);
-		grid.g[_best_move] = CIRCLE;
-		dump_grid(&grid, 1);
-
-		// break the loop if end of game
-		if (evaluate_node(&grid, CROSS) || board_full(&grid)) {
-			break;
-		}
-	}
-
-	return 0;
+uint8_t get_best_move() {
+	return _best_move;
 }
