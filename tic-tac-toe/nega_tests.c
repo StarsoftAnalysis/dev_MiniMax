@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <time.h>
 
+#define MAX_SCORE 100
+#define MIN_SCORE -100
+
 static uint32_t g_nodes_cnt = 0;
 
 typedef enum _e_mark {
@@ -131,10 +134,10 @@ int8_t evaluate_node(struct node *n, e_mark player) {
 	int8_t r = 0;
 
 	if (check_win(n, player)) {
-		r = 16;
+		r = MAX_SCORE;
 	}
 	else if (check_win(n, opponent)) {
-		r = -16;
+		r = MIN_SCORE;
 	}
 	
 	return r;
@@ -180,20 +183,19 @@ e_mark active;
 
 int8_t nega_max(struct node *n, int d, e_mark player) {
 
-	int8_t max = -16;
+	int8_t max = MIN_SCORE;
 	int8_t score = max;
 	int8_t best = 0;
 	e_mark opponent = get_opposite(player);
 
-	if (board_full(n) || (score = evaluate_node(n, player))) {
-		return score ? score : count_wins(n, player);
+#define MAX_DEPTH 9
+
+	if (board_full(n) || 
+			(score = evaluate_node(n, player)) ||
+			(d == MAX_DEPTH)) {
+		return score ? score : (count_wins(n, player) - count_wins(n, opponent));
 	}
 	
-	/* if (d==0) { */
-	/* 	score = -1 * count_wins(n, player); */
-	/* 	best_move = n; */
-	/* } */
-
 	for (uint8_t i = 0; i < n->_ch_no; i++) {
 		if (n->children[i])
 			score = -1 * nega_max(n->children[i], d + 1, opponent);
@@ -260,15 +262,9 @@ struct node* get_human_move(struct node *n, e_mark m) {
 }
 
 
-/* void dump_nodes(struct node *n, uint8_t d) { */
-/* 	dump_node(n, d); */
-/*  */
-/* 	for (uint8_t i = 0; i < n->_ch_no; i++) { */
-/* 		dump_node(n->children[i], d + 1); */
-/* 	} */
-/*  */
-/* } */
-/*  */
+#define _GNU_SOURCE
+#include <fenv.h>
+
 
 int main(int argc, char *argv[])
 {
@@ -277,6 +273,11 @@ int main(int argc, char *argv[])
 
 	struct node *n = &root;
 	srand(time(NULL));
+
+	feenableexcept(FE_INVALID   | 
+			FE_DIVBYZERO | 
+			FE_OVERFLOW  | 
+			FE_UNDERFLOW);
 
 	while (1) {
 		n = get_human_move(n, CROSS);

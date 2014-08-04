@@ -4,10 +4,10 @@ CC=gcc
 all: $(EXE)
 
 %.o: %.c
-	$(CC) -std=c99 -c -o $@ $<
+	$(CC) -std=c99 -g -c -o $@ $<
 
 $(EXE): nega_tests.o
-	$(CC) -o $(EXE) $<
+	$(CC) -o $(EXE) $< -lm -g
 
 clean:
 	rm -rvf *.o $(EXE)
