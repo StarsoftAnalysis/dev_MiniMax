@@ -128,7 +128,7 @@ uint8_t count_wins(struct node *n, e_mark m) {
 
 	if ((get_grid(n,2,0) != o) && 
 			(get_grid(n,1,1) != o) && 
-			(get_grid(n,2,0) != o)) {
+			(get_grid(n,0,2) != o)) {
 		// winning right diagonal
 		res++;
 	}
@@ -140,7 +140,7 @@ uint8_t count_wins(struct node *n, e_mark m) {
 uint8_t board_full(struct node *n) {
 	for (uint8_t x = 0; x < 3; x++) {
 		for (uint8_t y = 0; y < 3; y++) {
-			if (get_grid(n, x, y) != EMPTY) return 0;
+			if (get_grid(n, x, y) == EMPTY) return 0;
 		}
 	}
 	return 1;
@@ -161,8 +161,9 @@ int8_t evaluate_node(struct node *n, e_mark player) {
 	return r;
 }
 
+#define MAX_DEPTH 2
 
-void generate_nodes(struct node *p, e_mark m) {
+void generate_nodes(struct node *p, uint8_t d, e_mark m) {
 	struct node *n = NULL;
 	uint8_t cnt = 8;
 	uint8_t x = 0, y = 0;
@@ -188,8 +189,7 @@ void generate_nodes(struct node *p, e_mark m) {
 
 		// recursively generate the rest of nodes if the current one isn't 
 		// the winning one
-		if (!check_win(n,m) && !check_win(n, mark))
-			generate_nodes(n, mark);
+		if (!evaluate_node(n, m) && (d<MAX_DEPTH)) generate_nodes(n, d+1, mark);
 	} 
 }
 
@@ -197,35 +197,44 @@ struct node *best_moves[9] = {0x00};
 struct node *best_move = NULL;
 int8_t ccc = 0;
 
-e_mark active;
 
 int8_t nega_max(struct node *n, int d, e_mark player) {
 
 	int8_t max = MIN_SCORE;
-	int8_t score = max;
+	int8_t score = 0;
 	int8_t best = 0;
 	e_mark opponent = get_opposite(player);
 
-#define MAX_DEPTH 10
 
 	if (board_full(n) || 
 			(score = evaluate_node(n, player)) ||
-			(d == MAX_DEPTH)) {
-		return score ? score : (count_wins(n, player) - count_wins(n, opponent));
+			(d >= MAX_DEPTH)) {
+		int8_t w = (count_wins(n, player) - count_wins(n, opponent));
+		return score ? score : w;
 	}
-	
+
 	for (uint8_t i = 0; i < n->_ch_no; i++) {
 		if (n->children[i])
 			score = -1 * nega_max(n->children[i], d + 1, opponent);
 
-		if (score >= max) {
+		/* if (d ==0) printf("%d\n", score); */
+
+		if (score > max) {
 			max = score;
 			if (d==0) best_moves[ccc++] = n->children[i];
 		}
 	}
 
 	if (d == 0) {
-		best_move = best_moves[rand() % ccc];
+		if (ccc) {
+			best_move = best_moves[rand() % ccc];
+		}
+		else {
+			// we are in trouble - no best move has been found
+			// I will just guess one
+			printf("warning - guessing best move\n");
+			best_move = n->children[rand() % n->_ch_no];
+		}
 		ccc = 0;
 	}
 
@@ -288,6 +297,8 @@ struct node* get_human_move(struct node *n, e_mark m) {
 
 #define TREE_PROFILING 0
 
+#define TEST_EVALUATE 0
+
 
 int main(int argc, char *argv[])
 {
@@ -299,11 +310,22 @@ int main(int argc, char *argv[])
 
 #if TREE_PROFILING == 1
 	set_grid(n,0,0,CROSS);
-	generate_nodes(n, CROSS);
+	generate_nodes(n, 0, CROSS);
 	printf("Nodes: %d\n", g_nodes_cnt);
 	exit(0);
 #endif
 
+
+#if TEST_EVALUATE == 1
+	for (uint8_t x = 0; x < 3; x++) {
+		for (uint8_t y = 0; y < 3; y++) {
+			set_grid(n, x, y, ((x+y + rand()) % 2) + 1);
+		}
+	}
+	dump_node(n, 0);
+	printf("score: %d\n", evaluate_node(n, CROSS));
+	exit(0);
+#endif
 
 
 #ifdef ENABLE_FP_EXCEPTION_CORE_DUMP
@@ -319,7 +341,7 @@ int main(int argc, char *argv[])
 		printf("CPU\n");
 
 		n->_ch_no = 0;
-		generate_nodes(n, CROSS);
+		generate_nodes(n, 0, CROSS);
 		nega_max(n, 0, CIRCLE);
 
 		dump_node(best_move, 1);
