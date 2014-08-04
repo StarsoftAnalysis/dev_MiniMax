@@ -6,7 +6,7 @@
 /**
  * @brief maximum tree generation/evaluation depth
  */
-#define MAX_DEPTH 2
+#define MAX_DEPTH 9
 
 /**
  * @brief minimal and maximal evaluation scores
@@ -46,6 +46,7 @@ const char symbols[LAST] = {
  * @brief the game play board
  */
 typedef struct { uint8_t g[GRID_SIZE_TOTAL]; } grid_t;
+
 
 
 /// board access functions

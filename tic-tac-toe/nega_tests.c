@@ -5,11 +5,7 @@
 
 #include "ttt.h"
 
-
-e_mark get_opposite(e_mark mark) {
-	return mark == CIRCLE ? CROSS : CIRCLE;
-}
-
+#define get_opposite(__mark) (__mark == CIRCLE ? CROSS : CIRCLE)
 
 uint8_t check_win(grid_t *g, e_mark m) {
 
@@ -114,47 +110,19 @@ int8_t evaluate_node(grid_t *g, e_mark player) {
 }
 
 
-/* void generate_nodes(struct node *p, uint8_t d, e_mark m) { */
-/* 	struct node *n = NULL; */
-/* 	uint8_t cnt = 8; */
-/* 	uint8_t x = 0, y = 0; */
-/* 	uint8_t mark = get_opposite(m); */
-/*  */
-/* 	while (cnt) { */
-/* 		x = cnt/3; */
-/* 		y = cnt%3; */
-/* 		cnt--; */
-/*  */
-/* 		if (EMPTY != get_grid(p,x,y)) continue; */
-/*  */
-/* 		if (!(n = malloc(sizeof(struct node)))) { */
-/* 			fprintf(stderr, "out of memory"); */
-/* 			exit; */
-/* 		} */
-/*  */
-/* 		memset(n, 0x00, sizeof(struct node)); */
-/* 		memcpy(n->grid, p->grid, 3); */
-/* 		set_grid(n, x, y, mark); */
-/* 		p->children[p->_ch_no++] = n; */
-/* 		g_nodes_cnt++; */
-/*  */
-/* 		// recursively generate the rest of nodes if the current one isn't  */
-/* 		// the winning one */
-/* 		if (!evaluate_node(n, m) && (d<MAX_DEPTH)) generate_nodes(n, d+1, mark); */
-/* 	}  */
-/* } */
-
 uint8_t best_moves[9] = {0x00};
 uint8_t best_move = 0x00;
 int8_t ccc = 0;
 
-
-int8_t nega_max(grid_t *g, int d, e_mark player) {
+int8_t nega_max(grid_t *g, uint8_t d, uint8_t player) {
 
 	int8_t max = MIN_SCORE;
 	int8_t score = 0;
-	int8_t best = 0;
 	e_mark opponent = get_opposite(player);
+
+#ifdef DEBUG
+	printf("depth: %d\n", d);
+#endif
 
 	// evaluate the board
 	if (board_full(g) || 
@@ -173,7 +141,13 @@ int8_t nega_max(grid_t *g, int d, e_mark player) {
 		// create new board
 		g->g[i] = player;
 		score = -1 * nega_max(g, d + 1, opponent);
+
+		// restore the original board
 		g->g[i] = EMPTY;
+
+#ifdef DEBUG
+		printf("score: %d\n", score);
+#endif
 
 		if (score > max) {
 			max = score;
@@ -181,17 +155,18 @@ int8_t nega_max(grid_t *g, int d, e_mark player) {
 		}
 	}
 
-	// if depth == 0
+	// if came back to the starting node
 	if (d == 0) {
 		if (ccc) {
 			best_move = best_moves[rand() % ccc];
 		}
 		else {
 			best_move = 0;
-
 			// we are in trouble - no best move has been found
 			// I will just guess one
+#ifdef DEBUG
 			printf("warning - guessing best move\n");
+#endif
 			while (g->g[best_move] != EMPTY) {
 				best_move = rand() % GRID_SIZE_TOTAL;
 			} // while
@@ -226,12 +201,19 @@ void get_human_move(grid_t *g, e_mark m) {
 	}
 }
 
+#define PROFILE_MEM 1
 
 int main(int argc, char *argv[])
 {
 	grid_t grid;
 	memset(&grid, 0x00, sizeof(grid_t));
 	srand(time(NULL));
+
+#if PROFILE_MEM == 1
+	grid.g[0] = CROSS;
+	nega_max(&grid, 0, CIRCLE);
+	exit(0);
+#endif
 
 	while (1) {
 		get_human_move(&grid, CROSS);
