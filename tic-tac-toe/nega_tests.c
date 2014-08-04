@@ -28,9 +28,27 @@ struct node {
 	struct node *children[8];
 	uint8_t _ch_no;
 
-	// board fields
-	uint8_t f[3][3];
-};
+	uint8_t grid[3];
+} __attribute__((packed));
+
+
+uint8_t get_grid(struct node *n, uint8_t x, uint8_t y) {
+	uint8_t idx = (x + y*3); 
+	uint8_t m = n->grid[idx >> 2];
+
+	return ((m >> ((idx & 0x03) << 1)) & 0x03);
+}
+
+
+void set_grid(struct node *n, uint8_t x, uint8_t y, e_mark m) {
+	uint8_t idx = (x + y*3); 
+	
+	// clear the bits first
+	n->grid[idx >> 2] &= ~(0x03 << ((idx & 0x03) << 1));
+
+	// set the bits 
+	n->grid[idx >> 2] |= ((m & 0x03) << ((idx & 0x03) << 1));
+}
 
 
 e_mark get_opposite(e_mark mark) {
@@ -42,9 +60,9 @@ uint8_t check_win(struct node *n, e_mark m) {
 
 	for (uint8_t x = 0; x<3; x++) {
 
-		if ((n->f[x][0] == n->f[x][1]) && 
-				(n->f[x][0] == n->f[x][2]) &&
-				(n->f[x][0] == m)) {
+		if ((get_grid(n,x,0) == get_grid(n,x,1)) && 
+				(get_grid(n,x,0) == get_grid(n,x,2)) &&
+				(get_grid(n,x,0) == m)) {
 			// winning column found
 			return 1;
 		}
@@ -52,24 +70,24 @@ uint8_t check_win(struct node *n, e_mark m) {
 	
 	for (uint8_t y = 0; y<3; y++) {
 
-		if ((n->f[0][y] == n->f[1][y]) && 
-				(n->f[0][y] == n->f[2][y]) &&
-				(n->f[0][y] == m)) {
+		if ((get_grid(n,0,y) == get_grid(n,1,y)) && 
+				(get_grid(n,0,y) == get_grid(n,2,y)) &&
+				(get_grid(n,0,y) == m)) {
 			// winning row found
 			return 1;
 		}
 	}
 
-	if ((n->f[0][0] == n->f[1][1]) && 
-			(n->f[0][0] == n->f[2][2]) &&
-			(n->f[0][0] == m)) {
+	if ((get_grid(n,0,0) == get_grid(n,1,1)) && 
+			(get_grid(n,0,0) == get_grid(n,2,2)) &&
+			(get_grid(n,0,0) == m)) {
 		// winning left diagonal
 		return 1;
 	}
 
-	if ((n->f[2][0] == n->f[1][1]) && 
-			(n->f[2][0] == n->f[0][2]) &&
-			(n->f[2][0] == m)) {
+	if ((get_grid(n,2,0) == get_grid(n,1,1)) && 
+			(get_grid(n,2,0) == get_grid(n,0,2)) &&
+			(get_grid(n,2,0) == m)) {
 		// winning right diagonal
 		return 1;
 	}
@@ -85,7 +103,7 @@ uint8_t count_wins(struct node *n, e_mark m) {
 	for (uint8_t x = 0; x<3; x++) {
 		uint8_t r = 0;
 		for (uint8_t y = 0; y<3; y++) {
-			if (n->f[x][y] == o) r++;
+			if (get_grid(n,x,y) == o) r++;
 		}
 
 		if (r == 0) res++;
@@ -94,23 +112,23 @@ uint8_t count_wins(struct node *n, e_mark m) {
 	for (uint8_t y = 0; y<3; y++) {
 		uint8_t c = 0;
 		for (uint8_t x = 0; x<3; x++) {
-			if (n->f[x][y] == o) c++;
+			if (get_grid(n,x,y) == o) c++;
 		}
 
 		if (c == 0) res++;
 	}
 
 
-	if ((n->f[0][0] != o) && 
-			(n->f[1][1] != o) && 
-			(n->f[2][2] != o)) {
+	if ((get_grid(n,0,0) != o) && 
+			(get_grid(n,1,1) != o) && 
+			(get_grid(n,2,2) != o)) {
 		// winning left diagonal
 		res++;
 	}
 
-	if ((n->f[2][0] != o) && 
-			(n->f[1][1] != o) && 
-			(n->f[2][0] != o)) {
+	if ((get_grid(n,2,0) != o) && 
+			(get_grid(n,1,1) != o) && 
+			(get_grid(n,2,0) != o)) {
 		// winning right diagonal
 		res++;
 	}
@@ -122,7 +140,7 @@ uint8_t count_wins(struct node *n, e_mark m) {
 uint8_t board_full(struct node *n) {
 	for (uint8_t x = 0; x < 3; x++) {
 		for (uint8_t y = 0; y < 3; y++) {
-			if (n->f[x][y] != EMPTY) return 0;
+			if (get_grid(n, x, y) != EMPTY) return 0;
 		}
 	}
 	return 1;
@@ -155,7 +173,7 @@ void generate_nodes(struct node *p, e_mark m) {
 		y = cnt%3;
 		cnt--;
 
-		if (EMPTY != p->f[x][y]) continue;
+		if (EMPTY != get_grid(p,x,y)) continue;
 
 		if (!(n = malloc(sizeof(struct node)))) {
 			fprintf(stderr, "out of memory");
@@ -163,8 +181,8 @@ void generate_nodes(struct node *p, e_mark m) {
 		}
 
 		memset(n, 0x00, sizeof(struct node));
-		memcpy(n->f, p->f, 9);
-		n->f[x][y] = mark;
+		memcpy(n->grid, p->grid, 3);
+		set_grid(n, x, y, mark);
 		p->children[p->_ch_no++] = n;
 		g_nodes_cnt++;
 
@@ -188,7 +206,7 @@ int8_t nega_max(struct node *n, int d, e_mark player) {
 	int8_t best = 0;
 	e_mark opponent = get_opposite(player);
 
-#define MAX_DEPTH 9
+#define MAX_DEPTH 10
 
 	if (board_full(n) || 
 			(score = evaluate_node(n, player)) ||
@@ -219,10 +237,10 @@ int8_t nega_max(struct node *n, int d, e_mark player) {
 void dump_node(struct node *n, uint8_t d) {
 	for (uint8_t y = 0; y < 3; y++) {
 		for (uint8_t i = 0; i<d; i++) printf(" ");
-		printf("%c | %c | %c\n", 
-				symbols[n->f[0][y]],
-				symbols[n->f[1][y]],
-				symbols[n->f[2][y]]);
+		printf("%c %c %c\n", 
+				symbols[get_grid(n,0,y)],
+				symbols[get_grid(n,1,y)],
+				symbols[get_grid(n,2,y)]);
 	}
 }
 
@@ -231,9 +249,9 @@ void dump_nodes(struct node *n, uint8_t d) {
 	for (uint8_t y = 0; y < 3; y++) {
 		for (uint8_t i = 0; i<d; i++) printf(" ");
 		printf("%c %c %c\n", 
-				symbols[n->f[0][y]],
-				symbols[n->f[1][y]],
-				symbols[n->f[2][y]]);
+				symbols[get_grid(n,0,y)],
+				symbols[get_grid(n,1,y)],
+				symbols[get_grid(n,2,y)]);
 	}
 
 	for (uint8_t i = 0; i < n->_ch_no; i++) 
@@ -255,15 +273,20 @@ struct node* get_human_move(struct node *n, e_mark m) {
 	i = i - '0';
 
 	if (i >= 0 && i<= 9) {
-		n->f[i/3][i%3] = m;
+		set_grid(n, i/3, i%3, m);
 	}
 
 	return n;
 }
 
 
+#ifdef ENABLE_FP_EXCEPTION_CORE_DUMP
 #define _GNU_SOURCE
 #include <fenv.h>
+#endif
+
+
+#define TREE_PROFILING 0
 
 
 int main(int argc, char *argv[])
@@ -274,10 +297,21 @@ int main(int argc, char *argv[])
 	struct node *n = &root;
 	srand(time(NULL));
 
-	feenableexcept(FE_INVALID   | 
+#if TREE_PROFILING == 1
+	set_grid(n,0,0,CROSS);
+	generate_nodes(n, CROSS);
+	printf("Nodes: %d\n", g_nodes_cnt);
+	exit(0);
+#endif
+
+
+
+#ifdef ENABLE_FP_EXCEPTION_CORE_DUMP
+	feenableexcept(FE_INVALID | 
 			FE_DIVBYZERO | 
 			FE_OVERFLOW  | 
 			FE_UNDERFLOW);
+#endif
 
 	while (1) {
 		n = get_human_move(n, CROSS);
@@ -291,16 +325,13 @@ int main(int argc, char *argv[])
 		dump_node(best_move, 1);
 		n = best_move;
 
+		// break the loop if end of game
 		if (evaluate_node(n, CROSS)) {
 			break;
 		}
 	}
 
 
-
-
-	/* dump_node(&root, 0); */
 	/* printf("Nodes: %d\n", g_nodes_cnt); */
-
 	return 0;
 }
