@@ -4,7 +4,7 @@ SOURCES=main.c \
 
 DEPS=
 COBJ=$(SOURCES:.c=.o)
-PCA_PREFIX=../../pca
+PCA_PREFIX=../pca
 
 CC=avr-gcc
 OBJC=avr-objcopy
